@@ -234,6 +234,7 @@ export default function Home() {
     .filter((category) => category.subreddits.length > 0);
 
   const timeFilterLabels: Record<TimeFilter, string> = {
+    hour: "Past Hour",
     day: "Today",
     week: "This Week",
     month: "This Month",
