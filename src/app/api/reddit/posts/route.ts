@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 
 const REDDIT_BASE_URL = "https://www.reddit.com";
 
+// More realistic User-Agent to avoid 403 errors
+const USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36";
+
 export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams;
   const subreddits = searchParams.get("subreddits") || "listentothis";
@@ -23,12 +26,32 @@ export async function GET(request: NextRequest) {
   try {
     const response = await fetch(url, {
       headers: {
-        "User-Agent": "RedditMusicPlayer/2.0 (Next.js)",
+        "User-Agent": USER_AGENT,
+        "Accept": "application/json",
+        "Accept-Language": "en-US,en;q=0.9",
       },
-      next: { revalidate: 60 }, // Cache for 1 minute
+      cache: "no-store", // Don't cache to avoid stale data issues
     });
 
     if (!response.ok) {
+      // If 403, try with different approach
+      if (response.status === 403) {
+        // Try the old.reddit.com endpoint as fallback
+        const fallbackUrl = url.replace("www.reddit.com", "old.reddit.com");
+        const fallbackResponse = await fetch(fallbackUrl, {
+          headers: {
+            "User-Agent": USER_AGENT,
+            "Accept": "application/json",
+          },
+          cache: "no-store",
+        });
+
+        if (fallbackResponse.ok) {
+          const data = await fallbackResponse.json();
+          return NextResponse.json(data);
+        }
+      }
+
       return NextResponse.json(
         { error: `Reddit API error: ${response.status}` },
         { status: response.status }
@@ -45,4 +68,3 @@ export async function GET(request: NextRequest) {
     );
   }
 }
-
